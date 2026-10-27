@@ -4,201 +4,239 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kreuzwort zu zweit</title>
-<meta name="description" content="Kreuzworträtsel, das ihr gemeinsam löst: beide schreiben gleichzeitig ins selbe Gitter, online per Link oder an einem Gerät.">
+<meta name="description" content="Kreuzworträtsel im Zeitungsstil, leicht, mittel oder schwer, das ihr gemeinsam löst: online per Link oder an einem Gerät.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;600;800&display=swap">
 <style>
-/* Layout: the grid and the current clue on the left, clues and players in the rail; stacks on phones. */
+/* Layout: a newspaper puzzle page. Masthead across the top, the grid and the clue columns below,
+   controls in a narrow rail. Deliberately one look (newsprint), so all colours are set explicitly. */
 :root {
-  --bg: #e8ebef; --surface: #ffffff; --ink: #1a1f29; --muted: #5b6474; --line: #cdd3dc;
-  --block: #1a1f29; --cell: #ffffff; --cell-line: #1a1f29; --word: #fff1a8; --cur: #ffd23f; --wrong: #d6332b;
-  --p0: #d42f2f; --p1: #2457c5; --p2: #1b8f50; --p3: #c98a00;
-  --focus: #2457c5;
-  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+  --paper: #f3efe5; --sheet: #fbf9f3; --ink: #141414; --muted: #5e5a50; --rule: #141414; --hair: #c9c2b2;
+  --block: #141414; --cell: #ffffff; --word: #ece3c0; --cur: #dcbc4e; --given: #77736a; --wrong: #b3261e;
+  --p0: #b3261e; --p1: #1f4e9c; --p2: #2a6b3f; --p3: #8f6200;
+  --focus: #1f4e9c;
+  --f-serif: "Libre Caslon Text", Georgia, "Times New Roman", serif;
+  --f-sans: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
 }
-@media (prefers-color-scheme: dark) { :root {
-  --bg: #111419; --surface: #1a1f28; --ink: #e8ecf2; --muted: #9ba6b6; --line: #2d3542;
-  --block: #0b0d11; --cell: #f4f1e8; --cell-line: #0b0d11; --word: #fbe58a; --cur: #ffc928;
-  --focus: #8fb0ff; color-scheme: dark;
-} }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  background: var(--paper); color: var(--ink); font-family: var(--f-serif); font-size: 15px; line-height: 1.45;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 20px 40px;
 }
 button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-.app { display: grid; grid-template-columns: minmax(0, 660px) minmax(280px, 380px); gap: 28px; justify-content: center; align-items: start; max-width: 1100px; margin: 0 auto; }
-@media (max-width: 960px) { .app { grid-template-columns: minmax(0, 660px); gap: 18px; } }
-header.brand { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-header.brand h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); letter-spacing: -0.02em; margin: 0; line-height: 1.05; }
-header.brand p { margin: 0; color: var(--muted); }
-header.brand a { color: var(--muted); }
+.page { max-width: 1120px; margin: 0 auto; background: var(--sheet); padding: clamp(16px, 3vw, 32px); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 10px 30px -18px rgba(0,0,0,.3); }
+
+/* Masthead */
+.mast { border-top: 3px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 10px 0 12px; display: grid; gap: 6px; text-align: center; }
+.mast .kicker { font-family: var(--f-sans); font-weight: 800; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.mast .kicker a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--hair); }
+.mast h1 { font-family: var(--f-serif); font-weight: 700; font-size: clamp(32px, 6vw, 56px); line-height: 1; margin: 4px 0 2px; letter-spacing: -0.01em; }
+.mast .dateline { font-family: var(--f-sans); font-size: 13px; color: var(--muted); border-top: 1px solid var(--hair); padding-top: 6px; display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.mast .dateline b { color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; margin-top: 22px; align-items: start; }
+@media (max-width: 920px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 
 /* Puzzle */
-.board { display: flex; flex-direction: column; gap: 12px; min-width: 0; position: relative; }
-.cluebar { background: var(--ink); color: var(--surface); border-radius: 10px; padding: 10px 14px; min-height: 48px; display: flex; gap: 10px; align-items: baseline; }
-.cluebar b { font-family: var(--f-display); font-weight: 800; white-space: nowrap; }
-.gridwrap { overflow-x: auto; padding-bottom: 4px; }
-.grid { display: grid; gap: 0; margin: 0 auto; background: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-.cell { position: relative; aspect-ratio: 1; background: transparent; }
-.cell.on { background: var(--cell); outline: 1.5px solid var(--cell-line); outline-offset: -0.75px; cursor: pointer; }
+.board { display: flex; flex-direction: column; gap: 14px; min-width: 0; position: relative; }
+.cluebar { border-top: 2px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 8px 2px; min-height: 44px; display: flex; gap: 12px; align-items: baseline; }
+.cluebar b { font-family: var(--f-sans); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.cluebar span { font-style: italic; }
+.gridwrap { overflow-x: auto; padding: 2px 0 6px; }
+.grid { display: grid; margin: 0 auto; border: 2.5px solid var(--rule); width: max-content; background: var(--block); gap: 1px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.cell { position: relative; aspect-ratio: 1; background: var(--block); }
+.cell.on { background: var(--cell); cursor: pointer; }
 .cell.on.word { background: var(--word); }
 .cell.on.cur { background: var(--cur); }
-.cell .num { position: absolute; top: 1px; left: 3px; font-size: clamp(7px, 1.6vw, 10px); line-height: 1; color: #333; font-weight: 700; }
-.cell .ch { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-display); font-weight: 800; font-size: clamp(13px, 3.6vw, 22px); color: var(--c, #1a1f29); padding-top: 2px; }
+.cell .num { position: absolute; top: 1px; left: 2px; font-family: var(--f-sans); font-size: clamp(7px, 1.4vw, 10px); line-height: 1; font-weight: 600; color: var(--ink); }
+.cell .ch { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-sans); font-weight: 600; font-size: clamp(13px, 3.4vw, 21px); color: var(--c, var(--ink)); padding-top: 3px; }
+.cell.given .ch { color: var(--given); font-weight: 400; }
 .cell.bad .ch { color: var(--wrong); text-decoration: line-through; }
-.cell .peer { position: absolute; inset: 1px; border: 3px solid var(--c); border-radius: 2px; pointer-events: none; }
-.cell .peer i { position: absolute; top: -9px; right: -3px; font-style: normal; font-size: 9px; font-weight: 700; background: var(--c); color: #fff; padding: 0 3px; border-radius: 3px; white-space: nowrap; }
+.cell .peer { position: absolute; inset: 0; border: 3px solid var(--c); pointer-events: none; }
+.cell .peer i { position: absolute; top: -10px; right: -4px; font-style: normal; font-family: var(--f-sans); font-size: 9px; font-weight: 800; background: var(--c); color: #fff; padding: 0 3px; white-space: nowrap; z-index: 1; }
 #kbd { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; font-size: 16px; border: 0; padding: 0; }
-.placeholder { border: 2px dashed var(--line); border-radius: 12px; padding: 32px 20px; text-align: center; color: var(--muted); }
-.placeholder .mini { display: inline-grid; grid-template-columns: repeat(5, 28px); margin-bottom: 14px; }
-.placeholder .mini span { width: 28px; height: 28px; display: grid; place-items: center; font-family: var(--f-display); font-weight: 800; color: #1a1f29; }
-.placeholder .mini span.on { background: var(--cell); outline: 1.5px solid var(--cell-line); outline-offset: -0.75px; }
+
+.intro { display: grid; gap: 14px; }
+.intro .lead { font-size: 18px; line-height: 1.5; }
+.intro .lead::first-letter { font-size: 3.1em; float: left; line-height: .85; margin: 4px 8px 0 0; font-weight: 700; }
+.levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.levels div { padding: 10px 12px; border-left: 1px solid var(--hair); }
+.levels div:first-child { border-left: 0; padding-left: 0; }
+.levels b { font-family: var(--f-sans); font-weight: 800; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; display: block; }
+.levels span { font-size: 14px; color: var(--muted); }
+.levels em { display: block; margin-top: 6px; font-size: 14px; }
+@media (max-width: 560px) { .levels { grid-template-columns: 1fr; } .levels div { border-left: 0; padding-left: 0; border-top: 1px solid var(--hair); } .levels div:first-child { border-top: 0; } }
+
+/* Clues, printed in two columns like on paper */
+.clues { display: grid; grid-template-columns: 1fr; gap: 22px; }
+@media (max-width: 920px) and (min-width: 561px) { .clues { grid-template-columns: 1fr 1fr; } }
+.clues h3 { font-family: var(--f-sans); font-weight: 800; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin: 0; padding-bottom: 4px; border-bottom: 2px solid var(--rule); }
+.clues ol { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; }
+.clues li { display: flex; gap: 8px; padding: 4px 4px; cursor: pointer; font-size: 14.5px; line-height: 1.35; border-bottom: 1px dotted var(--hair); }
+.clues li:hover { background: var(--paper); }
+.clues li.active { background: var(--word); }
+.clues li.solved span { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--hair); }
+.clues li b { min-width: 20px; text-align: right; font-family: var(--f-sans); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.clues li .len { color: var(--muted); font-family: var(--f-sans); font-size: 12px; white-space: nowrap; }
+.clues li .who { width: 8px; height: 8px; border-radius: 50%; background: var(--c); align-self: center; flex: none; }
 
 /* Rail */
-.rail { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.panel h2 { font-family: var(--f-display); font-weight: 800; font-size: 20px; margin: 0; letter-spacing: -0.01em; }
-.panel h3 { font-family: var(--f-display); font-weight: 800; font-size: 16px; margin: 0; }
-.panel p { margin: 0; }
+.rail { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.box { border-top: 2px solid var(--rule); padding-top: 10px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.box h2 { font-family: var(--f-sans); font-weight: 800; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; margin: 0; }
+.box p { margin: 0; }
 .muted { color: var(--muted); }
-.small { font-size: 13px; }
-.label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.small { font-size: 13.5px; }
+.label { font-family: var(--f-sans); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 800; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.row > input { flex: 1 1 140px; min-width: 0; }
-input[type=text], select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; min-width: 0; }
-.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 9px 14px; cursor: pointer; font-weight: 700; }
-.btn:hover:not(:disabled) { border-color: var(--ink); }
-.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.btn[aria-pressed=true] { box-shadow: inset 0 0 0 2px var(--ink); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.chip { width: 14px; height: 14px; border-radius: 50%; background: var(--c); flex: none; border: 2px solid color-mix(in srgb, var(--c) 55%, #000); }
-.note { border-left: 3px solid var(--p3); padding: 6px 10px; background: color-mix(in srgb, var(--p3) 10%, transparent); border-radius: 0 6px 6px 0; font-size: 13px; margin: 0; }
-.list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.row > * { min-width: 0; }
+.row > input { flex: 1 1 140px; }
+input[type=text], select { background: #fff; border: 1px solid var(--ink); border-radius: 0; padding: 8px 10px; font-family: var(--f-sans); font-size: 14px; }
+select { flex: 1 1 120px; }
+.btn { border: 1px solid var(--ink); background: #fff; border-radius: 0; padding: 8px 12px; cursor: pointer; font-family: var(--f-sans); font-weight: 600; font-size: 14px; }
+.btn:hover:not(:disabled) { background: var(--paper); }
+.btn.primary { background: var(--ink); color: var(--sheet); }
+.btn.primary:hover:not(:disabled) { background: #333; }
+.btn[aria-pressed=true] { background: var(--word); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.chip { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
+.note { border-left: 3px solid var(--ink); padding: 4px 10px; font-family: var(--f-sans); font-size: 13px; margin: 0; background: var(--paper); }
+.list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dotted var(--hair); min-width: 0; font-family: var(--f-sans); font-size: 14px; }
 .list li .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.code { font-family: var(--f-display); font-weight: 800; font-size: 34px; letter-spacing: .14em; line-height: 1; }
-.stats { display: flex; gap: 18px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
-.stats div { display: flex; flex-direction: column; }
-.stats b { font-family: var(--f-display); font-size: 22px; line-height: 1.1; }
-.clues { display: grid; grid-template-columns: 1fr; gap: 14px; }
-.clues ol { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow-y: auto; }
-.clues li { display: flex; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 1.35; }
-.clues li:hover { background: var(--bg); }
-.clues li.active { background: var(--word); color: #1a1f29; }
-.clues li.solved { color: var(--muted); text-decoration: line-through; }
-.clues li b { min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
-.clues li .who { width: 8px; height: 8px; border-radius: 50%; background: var(--c); align-self: center; flex: none; }
-.done { background: color-mix(in srgb, var(--p2) 12%, var(--surface)); border-color: var(--p2); }
-.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 8px; font-weight: 700; z-index: 40; max-width: calc(100% - 32px); }
+.code { font-family: var(--f-serif); font-weight: 700; font-size: 34px; letter-spacing: .16em; line-height: 1; }
+.stats { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 4px 22px; font-variant-numeric: tabular-nums; }
+.stats b { font-family: var(--f-serif); font-weight: 700; font-size: 22px; line-height: 1.1; }
+.donebox { background: var(--word); padding: 10px 12px; font-size: 17px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--sheet); padding: 10px 16px; font-family: var(--f-sans); font-weight: 600; z-index: 40; max-width: calc(100% - 32px); }
+
+@media print {
+  body { background: #fff; padding: 0; }
+  .page { box-shadow: none; padding: 0; }
+  .rail .box:not(.clue-box), .cluebar, .toast, #kbd { display: none !important; }
+  .cell.on.word, .cell.on.cur { background: #fff; }
+  .cell .peer { display: none; }
+}
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="brand">
-    <h1>Kreuzwort zu zweit</h1>
-    <p>Ihr schreibt gleichzeitig ins selbe Rätsel und seht live, was der andere einträgt. <a href="../">Alle Spiele</a></p>
+<div class="page">
+  <header class="mast">
+    <div class="kicker"><span>Rätsel</span><a href="../">Alle Spiele</a></div>
+    <h1>Kreuzworträtsel</h1>
+    <div class="dateline"><span id="date"></span><span id="pz-no">Zu zweit lösen</span><b id="pz-level"></b></div>
   </header>
 
-  <section class="board" aria-label="Rätsel">
-    <div class="cluebar" id="cluebar"><b>So geht’s</b><span>Tippe auf ein Kästchen und schreib los. Nochmal tippen wechselt zwischen waagerecht und senkrecht.</span></div>
-    <div class="placeholder" id="placeholder">
-      <div class="mini" aria-hidden="true">
-        <span></span><span class="on">K</span><span></span><span></span><span></span>
-        <span class="on">W</span><span class="on">O</span><span class="on">R</span><span class="on">T</span><span></span>
-        <span></span><span class="on">P</span><span></span><span class="on">E</span><span></span>
-        <span></span><span class="on">F</span><span></span><span class="on">E</span><span></span>
+  <div class="cols">
+    <section class="board" aria-label="Rätsel">
+      <div class="intro" id="intro">
+        <p class="lead">Löst das Rätsel gemeinsam: Ihr schreibt gleichzeitig ins selbe Gitter, jeder sieht sofort, was der andere einträgt, und wer ein Wort vollendet, bekommt es gutgeschrieben. Jedes Rätsel wird neu gesetzt.</p>
+        <div class="levels">
+          <div><b>Leicht</b><span>12 kurze Wörter, direkte Fragen, einige Buchstaben stehen schon da.</span><em>„Hat lange Ohren und hoppelt“ (4)</em></div>
+          <div><b>Mittel</b><span>16 Wörter, halb direkte Fragen, halb Umschreibungen.</span><em>„Schiff der Wüste“ (5)</em></div>
+          <div><b>Schwer</b><span>Bis zu 20 lange Wörter, nur Umschreibungen und Wortspiele.</span><em>„Hat Phasen, aber keine Pubertät“ (4)</em></div>
+        </div>
       </div>
-      <p>Starte rechts ein Rätsel. Jedes Mal wird ein neues aus den Wörtern des Themas gebaut.</p>
+      <div class="cluebar" id="cluebar" hidden></div>
+      <div class="gridwrap" id="gridwrap" hidden><div class="grid" id="grid"></div></div>
+      <input id="kbd" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Buchstabe eingeben">
+    </section>
+
+    <div class="rail">
+      <!-- Home -->
+      <section id="view-home" class="rail">
+        <div class="box">
+          <h2>Zusammen online</h2>
+          <p id="online-note" class="note" hidden></p>
+          <label class="label" for="my-name">Dein Name</label>
+          <input type="text" id="my-name" maxlength="20" placeholder="z. B. Moritz">
+          <button class="btn primary" id="btn-create">Neues Rätsel erstellen</button>
+          <p class="muted small">Du bekommst einen Einladungslink. Schick ihn deinem Freund, und ihr löst das Rätsel zusammen.</p>
+          <div class="label">Mit Code beitreten</div>
+          <div class="row">
+            <input type="text" id="join-code" maxlength="4" placeholder="ABCD" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em">
+            <button class="btn" id="btn-join">Beitreten</button>
+          </div>
+          <button class="btn" id="btn-resume" hidden></button>
+        </div>
+        <div class="box">
+          <h2>An einem Gerät</h2>
+          <p class="muted small">Ihr sitzt zusammen vor einem Bildschirm und rätselt gemeinsam.</p>
+          <div class="row">
+            <select id="local-theme" aria-label="Thema"></select>
+            <select id="local-level" aria-label="Schwierigkeit"></select>
+          </div>
+          <button class="btn primary" id="btn-local">Rätsel starten</button>
+        </div>
+      </section>
+
+      <!-- Lobby -->
+      <section id="view-lobby" class="rail" hidden>
+        <div class="box">
+          <h2>Einladung</h2>
+          <span class="code" id="lobby-code">----</span>
+          <label class="label" for="invite-link">Einladungslink</label>
+          <input type="text" id="invite-link" readonly>
+          <div class="row"><button class="btn primary" id="btn-copy">Link kopieren</button><button class="btn" id="btn-share" hidden>Teilen …</button></div>
+          <p class="note" id="conn-lobby" hidden></p>
+        </div>
+        <div class="box">
+          <h2>Wer rätselt mit?</h2>
+          <label class="label" for="lobby-name">Dein Name</label>
+          <input type="text" id="lobby-name" maxlength="20" placeholder="z. B. Moritz">
+          <ul class="list" id="seats"></ul>
+          <div class="row">
+            <select id="lobby-theme" aria-label="Thema"></select>
+            <select id="lobby-level" aria-label="Schwierigkeit"></select>
+          </div>
+          <button class="btn primary" id="btn-start" disabled>Rätsel starten</button>
+          <p class="muted small" id="lobby-hint"></p>
+          <button class="btn" id="btn-lobby-back">Zurück</button>
+        </div>
+      </section>
+
+      <!-- Game -->
+      <section id="view-game" class="rail" hidden>
+        <div class="box">
+          <div class="stats">
+            <span class="label">Zeit</span><span class="label">Gelöst</span><span class="label">Tipps</span>
+            <b id="time">0:00</b><b id="progress">0 / 0</b><b id="hints">0</b>
+          </div>
+          <p class="donebox" id="done-msg" hidden></p>
+          <ul class="list" id="players"></ul>
+          <div class="row">
+            <button class="btn" id="btn-check" aria-pressed="false">Fehler zeigen</button>
+            <button class="btn" id="btn-hint">Buchstabe aufdecken</button>
+            <button class="btn" id="btn-print">Drucken</button>
+          </div>
+          <p class="note" id="conn-game" hidden></p>
+        </div>
+        <div class="box clue-box">
+          <div class="clues">
+            <div><h3>Waagerecht</h3><ol id="clues-h"></ol></div>
+            <div><h3>Senkrecht</h3><ol id="clues-v"></ol></div>
+          </div>
+        </div>
+        <div class="box">
+          <h2>Nächstes Rätsel</h2>
+          <div class="row">
+            <select id="again-theme" aria-label="Thema für das nächste Rätsel"></select>
+            <select id="again-level" aria-label="Schwierigkeit für das nächste Rätsel"></select>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="btn-again">Neues Rätsel</button>
+            <button class="btn" id="btn-leave">Zur Startseite</button>
+          </div>
+        </div>
+      </section>
     </div>
-    <div class="gridwrap" id="gridwrap" hidden><div class="grid" id="grid"></div></div>
-    <input id="kbd" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Buchstabe eingeben">
-  </section>
-
-  <div class="rail">
-    <!-- Home -->
-    <section id="view-home" class="rail">
-      <div class="panel">
-        <h2>Zusammen online</h2>
-        <p id="online-note" class="note" hidden></p>
-        <label class="label" for="my-name">Dein Name</label>
-        <input type="text" id="my-name" maxlength="20" placeholder="z. B. Moritz">
-        <button class="btn primary" id="btn-create">Neues Rätsel erstellen</button>
-        <p class="muted small">Du bekommst einen Einladungslink. Schick ihn deinem Freund, und ihr löst das Rätsel zusammen.</p>
-        <div class="label">Mit Code beitreten</div>
-        <div class="row">
-          <input type="text" id="join-code" maxlength="4" placeholder="ABCD" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em">
-          <button class="btn" id="btn-join">Beitreten</button>
-        </div>
-        <button class="btn" id="btn-resume" hidden></button>
-      </div>
-      <div class="panel">
-        <h2>An einem Gerät</h2>
-        <p class="muted small">Ihr sitzt zusammen vor einem Bildschirm und rätselt gemeinsam.</p>
-        <label class="label" for="local-theme">Thema</label>
-        <select id="local-theme"></select>
-        <button class="btn primary" id="btn-local">Rätsel starten</button>
-      </div>
-    </section>
-
-    <!-- Lobby -->
-    <section id="view-lobby" class="rail" hidden>
-      <div class="panel">
-        <div class="label">Rätsel</div>
-        <span class="code" id="lobby-code">----</span>
-        <label class="label" for="invite-link">Einladungslink</label>
-        <input type="text" id="invite-link" readonly>
-        <div class="row"><button class="btn primary" id="btn-copy">Link kopieren</button><button class="btn" id="btn-share" hidden>Teilen …</button></div>
-        <p class="note" id="conn-lobby" hidden></p>
-      </div>
-      <div class="panel">
-        <h2>Wer rätselt mit?</h2>
-        <label class="label" for="lobby-name">Dein Name</label>
-        <input type="text" id="lobby-name" maxlength="20" placeholder="z. B. Moritz">
-        <ul class="list" id="seats"></ul>
-        <label class="label" for="lobby-theme">Thema</label>
-        <select id="lobby-theme"></select>
-        <button class="btn primary" id="btn-start" disabled>Rätsel starten</button>
-        <p class="muted small" id="lobby-hint"></p>
-        <button class="btn" id="btn-lobby-back">Zurück</button>
-      </div>
-    </section>
-
-    <!-- Game -->
-    <section id="view-game" class="rail" hidden>
-      <div class="panel" id="status-panel">
-        <div class="stats">
-          <div><span class="label">Zeit</span><b id="time">0:00</b></div>
-          <div><span class="label">Gelöst</span><b id="progress">0 / 0</b></div>
-          <div><span class="label">Thema</span><b id="theme-name" style="font-size:16px">–</b></div>
-        </div>
-        <p class="status" id="done-msg" hidden></p>
-        <ul class="list" id="players"></ul>
-        <div class="row">
-          <button class="btn" id="btn-check" aria-pressed="false">Fehler zeigen</button>
-          <button class="btn" id="btn-hint">Buchstabe aufdecken</button>
-        </div>
-        <div class="row">
-          <select id="again-theme" aria-label="Thema für das nächste Rätsel"></select>
-          <button class="btn primary" id="btn-again">Neues Rätsel</button>
-        </div>
-        <button class="btn" id="btn-leave">Zur Startseite</button>
-        <p class="note" id="conn-game" hidden></p>
-      </div>
-      <div class="panel">
-        <div class="clues">
-          <div><h3>Waagerecht →</h3><ol id="clues-h"></ol></div>
-          <div><h3>Senkrecht ↓</h3><ol id="clues-v"></ol></div>
-        </div>
-      </div>
-    </section>
   </div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -212,17 +250,19 @@ const COLORS = ['Rot', 'Blau', 'Grün', 'Gelb'];
 const CVAR = i => `var(--p${i})`;
 const clone = o => JSON.parse(JSON.stringify(o));
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+$('date').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
 // ---------- Crossword generator ----------
 // Places words one by one where they cross letters already on the board, never touching
 // other words side by side. Tries many random orders and keeps the fullest, most compact result.
-function generate(themeKey, target = 16) {
+function generate(themeKey, levelKey) {
+  const L = LEVELS[levelKey];
   const seen = new Set();
-  const list = THEMES[themeKey].words.filter(([a]) => !seen.has(a) && seen.add(a));
-  const N = 34;
+  const list = THEMES[themeKey].words.filter(([a]) => a.length >= L.minLen && a.length <= L.maxLen && !seen.has(a) && seen.add(a));
+  const N = 36;
   let best = null;
   for (let attempt = 0; attempt < 60; attempt++) {
-    const pool = shuffle(list.slice()).slice(0, 34).sort((a, b) => b[0].length - a[0].length || Math.random() - .5);
+    const pool = shuffle(list.slice()).slice(0, 38).sort((a, b) => b[0].length - a[0].length || Math.random() - .5);
     const g = new Map(), placed = [];
     const get = (r, c) => g.get(r * 100 + c);
     const fits = (w, r, c, dir) => {
@@ -239,18 +279,18 @@ function generate(themeKey, target = 16) {
       }
       return cross;
     };
-    const place = ([w, clue], r, c, dir) => {
-      const dr = dir === 'v' ? 1 : 0, dc = dir === 'h' ? 1 : 0;
+    const place = (item, r, c, dir) => {
+      const w = item[0], dr = dir === 'v' ? 1 : 0, dc = dir === 'h' ? 1 : 0;
       for (let i = 0; i < w.length; i++) {
         const k = (r + dr * i) * 100 + c + dc * i;
         const cell = g.get(k) || { ch: w[i] };
         cell[dir] = true; g.set(k, cell);
       }
-      placed.push({ ans: w, clue, r, c, dir });
+      placed.push({ ans: w, clue: Math.random() < L.hard ? item[2] : item[1], r, c, dir });
     };
-    place(pool[0], 16, 16 - Math.floor(pool[0][0].length / 2), 'h');
+    place(pool[0], 18, 18 - Math.floor(pool[0][0].length / 2), 'h');
     for (const item of pool.slice(1)) {
-      if (placed.length >= target) break;
+      if (placed.length >= L.target) break;
       const w = item[0], cands = [];
       for (const [k, cell] of g) {
         const r = Math.floor(k / 100), c = k % 100;
@@ -283,7 +323,10 @@ function generate(themeKey, target = 16) {
   words.forEach(p => { p.n = starts.indexOf(p.r * 100 + p.c) + 1; });
   words.sort((a, b) => a.n - b.n || (a.dir === 'h' ? -1 : 1));
   words.forEach((p, i) => { p.id = i; });
-  return { theme: themeKey, h: best.h, w: best.w, words };
+  const pz = { theme: themeKey, level: levelKey, no: 1000 + Math.floor(Math.random() * 9000), h: best.h, w: best.w, words, given: [] };
+  const keys = Object.keys(solutionOf(pz));
+  pz.given = shuffle(keys).slice(0, Math.round(keys.length * L.given));
+  return pz;
 }
 function solutionOf(pz) {
   const sol = {};
@@ -296,9 +339,13 @@ function solutionOf(pz) {
 const cellsOf = p => Array.from(p.ans, (_, i) => (p.r + (p.dir === 'v' ? i : 0)) + ',' + (p.c + (p.dir === 'h' ? i : 0)));
 
 // ---------- Game state (the host or the local device holds it) ----------
-function freshPuzzle(s, themeKey) {
-  const pz = generate(themeKey);
-  return Object.assign(s, { phase: 'play', puzzle: pz, letters: {}, by: {}, solved: {}, cursors: {}, hints: 0, startedAt: Date.now(), doneAt: null });
+function freshPuzzle(s, themeKey, levelKey) {
+  const pz = generate(themeKey, levelKey), sol = solutionOf(pz);
+  const letters = {}, by = {};
+  for (const k of pz.given) { letters[k] = sol[k]; by[k] = -2; }
+  Object.assign(s, { phase: 'play', puzzle: pz, letters, by, solved: {}, cursors: {}, hints: 0, startedAt: Date.now(), doneAt: null });
+  refreshSolved(s, -2);
+  return s;
 }
 function refreshSolved(s, seat) {
   const sol = solutionOf(s.puzzle);
@@ -325,12 +372,12 @@ function applyAction(state, cid, d) {
       return s;
     case 'start':
     case 'again':
-      if (seat < 0 || !THEMES[d.theme] || (d.type === 'start' && s.phase !== 'lobby')) return null;
-      return freshPuzzle(s, d.theme);
+      if (seat < 0 || !THEMES[d.theme] || !LEVELS[d.level] || (d.type === 'start' && s.phase !== 'lobby')) return null;
+      return freshPuzzle(s, d.theme, d.level);
     case 'set': {
       if (s.phase !== 'play' || seat < 0) return null;
       const k = d.r + ',' + d.c, sol = solutionOf(s.puzzle);
-      if (!(k in sol)) return null;
+      if (!(k in sol) || s.puzzle.given.includes(k)) return null;
       const ch = String(d.ch || '').toUpperCase();
       if (ch && !/^[A-Z]$/.test(ch)) return null;
       if (ch) { s.letters[k] = ch; s.by[k] = seat; } else { delete s.letters[k]; delete s.by[k]; }
@@ -365,12 +412,18 @@ const CID = (() => {
   return id;
 })();
 const mySeat = () => app.state ? app.state.seats.findIndex(x => x && x.uid === CID) : -1;
-const nameOf = (s, p) => p === -1 ? 'Tipp' : ((s.seats[p] && s.seats[p].name) || COLORS[p]);
+const nameOf = (s, p) => p < 0 ? 'Tipp' : ((s.seats[p] && s.seats[p].name) || COLORS[p]);
+const isGiven = k => app.state && app.state.puzzle && app.state.puzzle.given.includes(k);
 
 for (const id of ['local-theme', 'lobby-theme', 'again-theme']) {
   for (const [k, t] of Object.entries(THEMES)) { const o = document.createElement('option'); o.value = k; o.textContent = t.name; $(id).appendChild(o); }
-  $(id).value = 'gemischt';
+  $(id).value = store.get('kw-theme') || 'gemischt';
 }
+for (const id of ['local-level', 'lobby-level', 'again-level']) {
+  for (const [k, l] of Object.entries(LEVELS)) { const o = document.createElement('option'); o.value = k; o.textContent = l.name; $(id).appendChild(o); }
+  $(id).value = store.get('kw-level') || 'mittel';
+}
+const rememberChoice = (t, l) => { store.set('kw-theme', t); store.set('kw-level', l); };
 
 function setScreen(v) {
   app.screen = v;
@@ -383,7 +436,8 @@ function setScreen(v) {
 let builtFor = null, cellEls = {};
 function buildGrid(pz) {
   const grid = $('grid'); grid.innerHTML = ''; cellEls = {};
-  const size = Math.max(22, Math.min(40, Math.floor((Math.min(660, $('gridwrap').clientWidth || 600)) / pz.w)));
+  const avail = Math.min(720, $('gridwrap').clientWidth || 640);
+  const size = Math.max(22, Math.min(38, Math.floor((avail - 6) / pz.w) - 1));
   grid.style.gridTemplateColumns = `repeat(${pz.w}, ${size}px)`;
   const sol = solutionOf(pz), nums = {};
   for (const p of pz.words) nums[p.r + ',' + p.c] = p.n;
@@ -392,6 +446,7 @@ function buildGrid(pz) {
     el.className = 'cell';
     if (k in sol) {
       el.classList.add('on'); el.dataset.k = k;
+      if (pz.given.includes(k)) el.classList.add('given');
       if (nums[k]) { const n = document.createElement('span'); n.className = 'num'; n.textContent = nums[k]; el.appendChild(n); }
       const ch = document.createElement('span'); ch.className = 'ch'; el.appendChild(ch);
       cellEls[k] = el;
@@ -412,8 +467,11 @@ function currentWord() {
 function renderBoard() {
   const s = app.state;
   const playing = s && s.puzzle && s.phase !== 'lobby';
-  $('placeholder').hidden = !!playing;
+  $('intro').hidden = !!playing;
   $('gridwrap').hidden = !playing;
+  $('cluebar').hidden = !playing;
+  $('pz-no').textContent = playing ? `Rätsel Nr. ${s.puzzle.no} · ${THEMES[s.puzzle.theme].name}` : 'Zu zweit lösen';
+  $('pz-level').textContent = playing ? LEVELS[s.puzzle.level].name : '';
   if (!playing) return;
   if (builtFor !== s.puzzle && JSON.stringify(builtFor) !== JSON.stringify(s.puzzle)) { buildGrid(s.puzzle); if (!app.sel) selectWord(s.puzzle.words[0]); }
   const sol = solutionOf(s.puzzle), cw = currentWord();
@@ -423,7 +481,7 @@ function renderBoard() {
     const ch = s.letters[k] || '', by = s.by[k];
     const span = el.querySelector('.ch');
     span.textContent = ch;
-    span.style.setProperty('--c', by === undefined || by === -1 || app.mode === 'local' ? '#1a1f29' : CVAR(by));
+    span.style.setProperty('--c', by === undefined || by < 0 || app.mode === 'local' ? 'var(--ink)' : CVAR(by));
     el.classList.toggle('word', wordCells.has(k));
     el.classList.toggle('cur', !!app.sel && k === app.sel.r + ',' + app.sel.c);
     el.classList.toggle('bad', app.check && !!ch && ch !== sol[k]);
@@ -440,8 +498,8 @@ function renderBoard() {
   }
   const bar = $('cluebar'); bar.innerHTML = '';
   if (cw) {
-    const b = document.createElement('b'); b.textContent = `${cw.n} ${cw.dir === 'h' ? 'waagerecht' : 'senkrecht'} (${cw.ans.length})`;
-    const t = document.createElement('span'); t.textContent = cw.clue;
+    const b = document.createElement('b'); b.textContent = `${cw.n} ${cw.dir === 'h' ? 'waagerecht' : 'senkrecht'}`;
+    const t = document.createElement('span'); t.textContent = `${cw.clue} (${cw.ans.length})`;
     bar.append(b, t);
   }
 }
@@ -450,12 +508,11 @@ function renderGame() {
   const s = app.state; if (!s || !s.puzzle) return;
   const total = s.puzzle.words.length, solved = Object.keys(s.solved).length;
   $('progress').textContent = `${solved} / ${total}`;
-  $('theme-name').textContent = THEMES[s.puzzle.theme].name;
+  $('hints').textContent = s.hints;
   updateClock();
   const done = s.phase === 'done';
-  $('status-panel').classList.toggle('done', done);
   $('done-msg').hidden = !done;
-  if (done) $('done-msg').textContent = `Geschafft! Ihr habt das Rätsel in ${fmt(s.doneAt - s.startedAt)} gelöst` + (s.hints ? ` (mit ${s.hints} ${s.hints === 1 ? 'Tipp' : 'Tipps'}).` : '.');
+  if (done) $('done-msg').textContent = `Gelöst in ${fmt(s.doneAt - s.startedAt)}` + (s.hints ? `, mit ${s.hints} ${s.hints === 1 ? 'Tipp' : 'Tipps'}.` : ', ganz ohne Tipps.');
   const ul = $('players'); ul.innerHTML = '';
   if (app.mode === 'online') {
     for (let p = 0; p < 4; p++) {
@@ -464,7 +521,7 @@ function renderGame() {
       const chip = document.createElement('span'); chip.className = 'chip';
       const txt = document.createElement('span'); txt.className = 'grow'; txt.textContent = s.seats[p].name + (s.seats[p].uid === CID ? ' (du)' : '');
       const n = Object.values(s.solved).filter(x => x === p).length;
-      const info = document.createElement('span'); info.className = 'small muted'; info.textContent = n === 1 ? '1 Wort' : `${n} Wörter`;
+      const info = document.createElement('span'); info.className = 'muted'; info.textContent = n === 1 ? '1 Wort' : `${n} Wörter`;
       li.append(chip, txt, info); ul.appendChild(li);
     }
   }
@@ -479,9 +536,11 @@ function renderGame() {
       if (cw && cw.id === p.id) li.classList.add('active');
       if (s.solved[p.id] !== undefined) li.classList.add('solved');
       const b = document.createElement('b'); b.textContent = p.n;
-      const t = document.createElement('span'); t.textContent = `${p.clue} (${p.ans.length})`;
+      const t = document.createElement('span'); t.textContent = p.clue + ' ';
+      const len = document.createElement('span'); len.className = 'len'; len.textContent = `(${p.ans.length})`;
+      t.appendChild(len);
       li.append(b, t);
-      if (app.mode === 'online' && s.solved[p.id] !== undefined) { const w = document.createElement('span'); w.className = 'who'; w.style.setProperty('--c', CVAR(s.solved[p.id])); li.appendChild(w); }
+      if (app.mode === 'online' && s.solved[p.id] >= 0) { const w = document.createElement('span'); w.className = 'who'; w.style.setProperty('--c', CVAR(s.solved[p.id])); li.appendChild(w); }
       li.addEventListener('click', () => { selectWord(p); focusKbd(); });
       ol.appendChild(li);
     }
@@ -566,9 +625,12 @@ $('grid').addEventListener('click', e => {
   } else selectCell(r, c);
   focusKbd();
 });
+// Move within the current word, skipping letters that were given.
 function step(delta) {
   const cw = currentWord(); if (!cw) return;
-  const ks = cellsOf(cw), i = ks.indexOf(app.sel.r + ',' + app.sel.c) + delta;
+  const ks = cellsOf(cw);
+  let i = ks.indexOf(app.sel.r + ',' + app.sel.c) + delta;
+  while (i >= 0 && i < ks.length && isGiven(ks[i])) i += delta;
   if (i < 0 || i >= ks.length) return;
   const [r, c] = ks[i].split(',').map(Number);
   app.sel.r = r; app.sel.c = c;
@@ -582,14 +644,17 @@ function nextWord(delta) {
 function typeLetter(ch) {
   const s = app.state; if (!s || s.phase !== 'play' || !app.sel) return;
   const k = app.sel.r + ',' + app.sel.c;
-  s.letters[k] = ch; s.by[k] = mySeat(); // show at once; the host's answer replaces it
-  send({ type: 'set', r: app.sel.r, c: app.sel.c, ch });
+  if (!isGiven(k)) {
+    s.letters[k] = ch; s.by[k] = mySeat(); // show at once; the host's answer replaces it
+    send({ type: 'set', r: app.sel.r, c: app.sel.c, ch });
+  }
   step(1); sendCursor(); render();
 }
 function backspace() {
   const s = app.state; if (!s || s.phase !== 'play' || !app.sel) return;
   let k = app.sel.r + ',' + app.sel.c;
-  if (!s.letters[k]) { step(-1); k = app.sel.r + ',' + app.sel.c; }
+  if (!s.letters[k] || isGiven(k)) { step(-1); k = app.sel.r + ',' + app.sel.c; }
+  if (isGiven(k)) { render(); return; }
   delete s.letters[k];
   send({ type: 'set', r: app.sel.r, c: app.sel.c, ch: '' });
   sendCursor(); render();
@@ -629,15 +694,22 @@ function handleChar(raw) {
 
 $('btn-check').addEventListener('click', () => { app.check = !app.check; render(); });
 $('btn-hint').addEventListener('click', () => { if (app.sel) send({ type: 'hint', r: app.sel.r, c: app.sel.c }); focusKbd(); });
-$('btn-again').addEventListener('click', () => { app.sel = null; app.check = false; send({ type: 'again', theme: $('again-theme').value }); });
+$('btn-print').addEventListener('click', () => window.print());
+$('btn-again').addEventListener('click', () => {
+  app.sel = null; app.check = false;
+  rememberChoice($('again-theme').value, $('again-level').value);
+  send({ type: 'again', theme: $('again-theme').value, level: $('again-level').value });
+});
 let toastTimer;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3200); }
 
 // ---------- Local game ----------
 $('btn-local').addEventListener('click', () => {
   leaveOnline();
-  app.mode = 'local'; app.sel = null; app.check = false; app.clockOffset = 0;
-  app.state = freshPuzzle({ seats: [{ name: 'Ihr', uid: CID }, null, null, null] }, $('local-theme').value);
+  app.mode = 'local'; app.sel = null; app.check = false; app.clockOffset = 0; builtFor = null;
+  rememberChoice($('local-theme').value, $('local-level').value);
+  app.state = freshPuzzle({ seats: [{ name: 'Ihr', uid: CID }, null, null, null] }, $('local-theme').value, $('local-level').value);
+  $('again-theme').value = $('local-theme').value; $('again-level').value = $('local-level').value;
   setScreen('game'); render(); focusKbd();
 });
 function goHome() { leaveOnline(); app.mode = null; app.state = null; app.sel = null; builtFor = null; setScreen('home'); render(); }
@@ -671,7 +743,10 @@ function leaveOnline() {
 function showState(s) {
   const was = app.state && app.state.puzzle;
   app.state = s;
-  if (s.puzzle && (!was || was.words.length !== s.puzzle.words.length || JSON.stringify(was) !== JSON.stringify(s.puzzle))) { app.sel = null; builtFor = null; app.check = false; }
+  if (s.puzzle && (!was || JSON.stringify(was) !== JSON.stringify(s.puzzle))) {
+    app.sel = null; builtFor = null; app.check = false;
+    $('again-theme').value = s.puzzle.theme; $('again-level').value = s.puzzle.level;
+  }
   setScreen(s.phase === 'lobby' ? 'lobby' : 'game');
   render();
 }
@@ -751,7 +826,7 @@ function joinGame(code) {
 }
 function openGame(code) {
   const saved = store.get('kw-host-' + code);
-  if (saved) { try { hostGame(code, JSON.parse(saved)); return; } catch {} }
+  if (saved) { try { const s = JSON.parse(saved); if (!s.puzzle || s.puzzle.level) { hostGame(code, s); return; } } catch {} }
   joinGame(code);
 }
 
@@ -763,7 +838,10 @@ $('btn-join').addEventListener('click', () => {
 });
 $('join-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-join').click(); });
 $('btn-resume').addEventListener('click', () => { const c = store.get('kw-code'); if (c) openGame(c); });
-$('btn-start').addEventListener('click', () => send({ type: 'start', theme: $('lobby-theme').value }));
+$('btn-start').addEventListener('click', () => {
+  rememberChoice($('lobby-theme').value, $('lobby-level').value);
+  send({ type: 'start', theme: $('lobby-theme').value, level: $('lobby-level').value });
+});
 $('btn-copy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(inviteLink(app.code)); toast('Link kopiert. Jetzt an deinen Freund schicken!'); }
   catch { $('invite-link').select(); toast('Link markiert. Jetzt kopieren (Strg+C).'); }

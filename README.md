@@ -33,10 +33,12 @@ Eigenes Kartenspiel mit Farben und Symbolen: https://moeitz.github.io/Games/farb
 Gemeinsames Kreuzworträtsel: https://moeitz.github.io/Games/kreuzwort/
 
 - Jedes Rätsel wird neu aus einer Wortliste gebaut (`kreuzwort/words.js`): Querbeet, Tiere, Essen & Trinken, Welt & Länder, Sport & Freizeit oder alles gemischt.
+- Drei Stufen: **Leicht** (12 kurze Wörter, direkte Fragen, einige Buchstaben vorgegeben), **Mittel** (16 Wörter, halb Umschreibungen), **Schwer** (20 Wörter, nur Umschreibungen und Wortspiele).
+- Im Stil einer Zeitungsrätselseite, mit Druckfunktion.
 - Alle schreiben gleichzeitig ins selbe Gitter. Buchstaben erscheinen in der Farbe des Schreibers, die Position der anderen wird angezeigt.
 - Wer ein Wort mit dem letzten richtigen Buchstaben vollendet, bekommt es gutgeschrieben.
 - „Fehler zeigen“ markiert falsche Buchstaben, „Buchstabe aufdecken“ hilft weiter.
-- Eigene Wörter: in `words.js` als `['ANTWORT', 'Frage']` ergänzen (nur A–Z, keine Umlaute).
+- Eigene Wörter: in `words.js` als `['ANTWORT', 'leichte Frage', 'schwere Umschreibung']` ergänzen (nur A–Z, keine Umlaute).
 
 ## Online-Spiel
 

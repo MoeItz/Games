@@ -288,7 +288,8 @@ details ul { padding-left: 18px; margin: 8px 0 0; display: flex; flex-direction:
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="../shared/net.js"></script>
 <script>
 // ---------- Cards ----------
 const SUITS = ['c', 's', 'h', 'd'];
@@ -546,10 +547,10 @@ function renderTable(v) {
 }
 
 function renderHome() {
-  $('btn-create').disabled = !window.Peer;
-  $('btn-join').disabled = !window.Peer;
+  $('btn-create').disabled = !GameNet.available();
+  $('btn-join').disabled = !GameNet.available();
   const last = store.get('mau-code');
-  $('btn-resume').hidden = !(window.Peer && last);
+  $('btn-resume').hidden = !(GameNet.available() && last);
   if (last) $('btn-resume').textContent = 'Zurück zu Spiel ' + last;
 }
 function renderLocalNames() {
@@ -695,10 +696,10 @@ function goHome() { leaveOnline(); app.mode = null; app.full = null; app.view = 
 $('btn-leave').addEventListener('click', goHome);
 $('btn-lobby-back').addEventListener('click', goHome);
 
-// ---------- Online (PeerJS: the host's browser keeps the game, friends connect to it) ----------
-const PREFIX = 'maumau-v1-';
+// ---------- Online (the host's browser keeps the game; ../shared/net.js carries the messages) ----------
+const GAME = 'maumau';
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-const net = { peer: null, isHost: false, conns: [], hostConn: null, status: 'off', connected: false };
+const net = { link: null, isHost: false, status: 'off' };
 const nameInputs = ['my-name', 'lobby-name'];
 nameInputs.forEach(id => $(id).addEventListener('input', e => {
   nameInputs.forEach(o => { if (o !== id) $(o).value = e.target.value; });
@@ -710,13 +711,13 @@ function inviteLink(code) { return location.href.split('#')[0] + '#' + code; }
 function onlineNote(msg) { const n = $('online-note'); n.textContent = msg; n.hidden = !msg; }
 function setStatus(st) { net.status = st; renderConn(); }
 function renderConn() {
-  const txt = { connecting: 'Verbinde …', online: 'Verbunden.', reconnecting: 'Verbindung weg, verbinde neu …' }[net.status] || '';
+  const txt = { connecting: 'Verbinde …', online: 'Verbunden.', reconnecting: 'Verbindung weg, verbinde neu …', nohost: 'Der Gastgeber antwortet nicht. Ist sein Tab noch offen?' }[net.status] || '';
   const extra = net.isHost && net.status === 'online' ? ' Du bist Gastgeber: lass diesen Tab offen, sonst ist das Spiel für alle weg.' : '';
   for (const id of ['conn-lobby', 'conn-game']) { $(id).textContent = txt + extra; $(id).hidden = !txt; }
 }
 function leaveOnline() {
-  if (net.peer) { try { net.peer.destroy(); } catch {} }
-  net.peer = null; net.conns = []; net.hostConn = null; net.isHost = false; net.connected = false;
+  if (net.link) net.link.close();
+  net.link = null; net.isHost = false;
   app.code = null; app.lastTurnSeen = null; setStatus('off');
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
 }
@@ -725,60 +726,35 @@ function showView(v) { app.view = v; setScreen(v.phase === 'lobby' ? 'lobby' : '
 function send(action) {
   const msg = Object.assign({}, action, { cid: CID, name: myName() });
   if (app.mode === 'local') { localApply(action); return; }
-  if (net.isHost) { hostHandle(CID, msg, null); return; }
-  if (net.hostConn && net.hostConn.open) net.hostConn.send(msg);
-  else toast('Keine Verbindung zum Gastgeber. Warte kurz.');
+  if (net.isHost) { hostHandle(CID, msg); return; }
+  if (!net.link || !net.link.send(msg)) toast('Keine Verbindung. Warte kurz.');
 }
 
 // --- Host ---
 const seatOfCid = (s, cid) => s.seats.findIndex(x => x && x.uid === cid);
 function hostSave() { if (app.code) store.set('mau-host-' + app.code, JSON.stringify(app.full)); }
-function sendView(c) { if (c && c.open && c.cid) c.send({ type: 'view', view: viewFor(app.full, seatOfCid(app.full, c.cid)) }); }
+function sendView(cid) { if (net.link && cid !== CID) net.link.sendTo(cid, { type: 'view', view: viewFor(app.full, seatOfCid(app.full, cid)) }); }
 function broadcast() {
   hostSave();
-  net.conns.forEach(sendView);
+  if (net.link) net.link.members.forEach(sendView);
   showView(viewFor(app.full, seatOfCid(app.full, CID)));
 }
 function hostGame(code, saved) {
   leaveOnline();
-  if (!window.Peer) { toast('Online-Spiel konnte nicht laden. Prüf deine Internetverbindung.'); return; }
+  if (!GameNet.available()) { toast('Online-Spiel konnte nicht laden. Prüf deine Internetverbindung.'); return; }
   net.isHost = true; app.mode = 'online'; app.code = code;
   app.full = saved || { phase: 'lobby', code, seats: [{ name: myName(), uid: CID }, null, null, null] };
   history.replaceState(null, '', '#' + code);
   store.set('mau-code', code);
-  setStatus('connecting'); broadcast();
-  const peer = new Peer(PREFIX + code);
-  net.peer = peer;
-  peer.on('open', () => { if (net.peer === peer) setStatus('online'); });
-  peer.on('connection', conn => {
-    conn.on('open', () => net.conns.push(conn));
-    conn.on('data', d => hostHandle(d && d.cid, d, conn));
-    conn.on('close', () => { net.conns = net.conns.filter(c => c !== conn); });
-    conn.on('error', () => {});
-  });
-  peer.on('disconnected', () => {
-    if (net.peer !== peer || peer.destroyed) return;
-    setStatus('reconnecting');
-    setTimeout(() => { if (net.peer === peer && peer.disconnected && !peer.destroyed) try { peer.reconnect(); } catch {} }, 2000);
-  });
-  peer.on('error', e => {
-    if (net.peer !== peer) return;
-    if (e.type === 'unavailable-id') {
-      if (!saved) { hostGame(newCode(), null); return; } // code already used by someone else
-      setStatus('reconnecting'); // our previous tab is still registered for a moment after a reload
-      setTimeout(() => { if (net.peer === peer) hostGame(code, app.full); }, 3000);
-      return;
-    }
-    if (e.type === 'peer-unavailable') return;
-    setStatus('reconnecting');
-  });
+  setStatus('connecting');
+  net.link = GameNet.host({ game: GAME, code, onAction: hostHandle, onStatus: setStatus });
+  broadcast();
 }
-function hostHandle(cid, d, conn) {
+function hostHandle(cid, d) {
   if (!cid || !d || !app.full) return;
-  if (conn) conn.cid = cid;
-  if (d.type === 'hello') { sendView(conn); return; }
+  if (d.type === 'hello') { sendView(cid); return; }
   const next = applyAction(app.full, cid, d);
-  if (!next) { if (conn) sendView(conn); return; }
+  if (!next) { sendView(cid); return; }
   app.full = next;
   broadcast();
 }
@@ -786,37 +762,17 @@ function hostHandle(cid, d, conn) {
 // --- Friend joining a host ---
 function joinGame(code) {
   leaveOnline();
-  if (!window.Peer) { toast('Online-Spiel konnte nicht laden. Prüf deine Internetverbindung.'); return; }
+  if (!GameNet.available()) { toast('Online-Spiel konnte nicht laden. Prüf deine Internetverbindung.'); return; }
   app.mode = 'online'; app.code = code; app.view = null; app.full = null;
   history.replaceState(null, '', '#' + code);
   setStatus('connecting'); setScreen('lobby'); render();
-  const peer = new Peer();
-  net.peer = peer;
-  let fails = 0, timer = null;
-  const retry = ms => { clearTimeout(timer); timer = setTimeout(connect, ms); };
-  function connect() {
-    if (net.peer !== peer || peer.destroyed || peer.disconnected) return;
-    if (net.hostConn && net.hostConn.open) return;
-    const c = peer.connect(PREFIX + code, { reliable: true });
-    c.on('open', () => {
-      net.hostConn = c; net.connected = true; fails = 0; setStatus('online');
-      c.send({ type: 'hello', cid: CID, name: myName() });
-      store.set('mau-code', code);
-    });
-    c.on('data', d => { if (d && d.type === 'view' && net.peer === peer) showView(d.view); });
-    c.on('close', () => { if (net.peer !== peer || net.hostConn !== c) return; net.hostConn = null; setStatus('reconnecting'); retry(2000); });
-    c.on('error', () => {});
-  }
-  peer.on('open', connect);
-  peer.on('disconnected', () => { if (net.peer === peer && !peer.destroyed) { try { peer.reconnect(); } catch {} retry(2500); } });
-  peer.on('error', e => {
-    if (net.peer !== peer) return;
-    if (e.type === 'peer-unavailable') {
-      fails++;
-      if (!net.connected && fails >= 4) { toast(`Kein Spiel ${code} gefunden. Ist der Gastgeber noch online?`); goHome(); return; }
-      setStatus('reconnecting'); retry(2500); return;
-    }
-    setStatus('reconnecting'); retry(3000);
+  net.link = GameNet.join({
+    game: GAME, code, cid: CID,
+    hello: () => ({ type: 'hello', cid: CID, name: myName() }),
+    // The host repeats the view as a keep-alive; only redraw when something changed.
+    onMessage: d => { if (d && d.type === 'view' && JSON.stringify(d.view) !== JSON.stringify(app.view)) { store.set('mau-code', code); showView(d.view); } },
+    onStatus: setStatus,
+    onNotFound: () => { toast(`Kein Spiel ${code} gefunden. Stimmt der Code, und ist der Tab des Gastgebers offen?`); goHome(); },
   });
 }
 function openGame(code) {
@@ -855,7 +811,7 @@ window.addEventListener('hashchange', () => {
   nameInputs.forEach(id => $(id).value = n);
   renderLocalNames();
   setScreen('home');
-  if (!window.Peer) onlineNote('Online-Spiel konnte nicht geladen werden. Prüf deine Internetverbindung. An einem Gerät könnt ihr trotzdem spielen.');
+  if (!GameNet.available()) onlineNote('Online-Spiel konnte nicht geladen werden. Prüf deine Internetverbindung. An einem Gerät könnt ihr trotzdem spielen.');
   render();
   const h = (location.hash || '').slice(1).toUpperCase();
   if (/^[A-Z]{4}$/.test(h)) openGame(h);

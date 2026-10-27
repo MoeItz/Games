@@ -21,4 +21,6 @@ Das Kartenspiel für 2 bis 4 Spieler: https://moeitz.github.io/Games/maumau/
 
 ## Online-Spiel
 
-Beide Spiele funktionieren gleich. Es gibt keinen eigenen Server: Der Browser des Gastgebers hält das Spiel, die Freunde verbinden sich direkt mit ihm über WebRTC ([PeerJS](https://peerjs.com)). Der Gastgeber muss den Tab offen lassen; lädt er neu, geht das Spiel an derselben Stelle weiter. In sehr strengen Netzwerken (Schul- oder Firmen-WLAN) kann die direkte Verbindung blockiert sein.
+Beide Spiele funktionieren gleich (`shared/net.js`). Der Browser des Gastgebers hält das Spiel. Die Nachrichten zwischen Gastgeber und Freunden laufen über öffentliche MQTT-Server (HiveMQ und EMQX, gleichzeitig) per verschlüsselter WebSocket-Verbindung, deshalb klappt es auch zwischen verschiedenen Netzwerken. Der Gastgeber muss den Tab offen lassen; lädt er neu, geht das Spiel an derselben Stelle weiter.
+
+Die öffentlichen Server sind für alle offen: Wer den Spielcode kennt, könnte mitlesen. Für Spiele unter Freunden ist das in Ordnung, für Geheimes nicht.

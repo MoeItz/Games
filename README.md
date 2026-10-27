@@ -28,6 +28,16 @@ Eigenes Kartenspiel mit Farben und Symbolen: https://moeitz.github.io/Games/farb
 - **Lawine:** Nächster zieht 2 (stapelbar). **Bumerang:** Strafkarten zurückschicken. **Bombe:** Alle anderen ziehen 1. **Doppelt:** noch eine Karte legen. **Kehrtwende:** Richtung dreht sich. **Tausch:** Karten mit einem Mitspieler tauschen. **Regenbogen:** passt auf alles, Farbe wählen.
 - Bei 2 Karten „Fieber!“ drücken, sonst 2 Strafkarten.
 
+## Kreuzwort zu zweit (`kreuzwort/`)
+
+Gemeinsames Kreuzworträtsel: https://moeitz.github.io/Games/kreuzwort/
+
+- Jedes Rätsel wird neu aus einer Wortliste gebaut (`kreuzwort/words.js`): Querbeet, Tiere, Essen & Trinken, Welt & Länder, Sport & Freizeit oder alles gemischt.
+- Alle schreiben gleichzeitig ins selbe Gitter. Buchstaben erscheinen in der Farbe des Schreibers, die Position der anderen wird angezeigt.
+- Wer ein Wort mit dem letzten richtigen Buchstaben vollendet, bekommt es gutgeschrieben.
+- „Fehler zeigen“ markiert falsche Buchstaben, „Buchstabe aufdecken“ hilft weiter.
+- Eigene Wörter: in `words.js` als `['ANTWORT', 'Frage']` ergänzen (nur A–Z, keine Umlaute).
+
 ## Online-Spiel
 
 Beide Spiele funktionieren gleich (`shared/net.js`). Der Browser des Gastgebers hält das Spiel. Die Nachrichten zwischen Gastgeber und Freunden laufen über öffentliche MQTT-Server (HiveMQ und EMQX, gleichzeitig) per verschlüsselter WebSocket-Verbindung, deshalb klappt es auch zwischen verschiedenen Netzwerken. Der Gastgeber muss den Tab offen lassen; lädt er neu, geht das Spiel an derselben Stelle weiter.

@@ -1,5 +1,10 @@
 // Ärgerbrett: actions, online play (../shared/net.js) and boot. Loaded after the inline script in index.html.
 
+// GIF search for the knock-out message. Get a free key at developers.giphy.com (an API key for a
+// web SDK/API app) and paste it here. Without a key the message is text only.
+const GIPHY_KEY = '';
+const GIF_URL_OK = u => typeof u === 'string' && u.length < 500 && /^https:\/\/media[0-9]*\.giphy\.com\/[A-Za-z0-9_\/.?=&-]+$/.test(u);
+
 // ---------- Actions ----------
 let toastTimer;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3600); }
@@ -13,12 +18,12 @@ function act(fn) {
 function doRollAction() { if (app.mode === 'local') act(doRoll); else send({ type: 'roll' }); }
 function doMoveAction(mv) { if (app.mode === 'local') act(st => doMove(st, mv)); else send({ type: 'move', i: mv.i }); }
 
-$('die').addEventListener('click', () => { if (app.state && !app.state.rolled && canAct(app.state) && !rollLocked()) doRollAction(); });
+$('die').addEventListener('click', () => { if (app.state && !app.state.rolled && canAct(app.state) && !rollLocked() && !paused(app.state)) doRollAction(); });
 
 // Roll inside the popup, let the die tumble until the result is in, show it, then close.
 function popRoll() {
   const s = app.state;
-  if (app.popRolling || !s || s.rolled || !canAct(s) || rollLocked()) return;
+  if (app.popRolling || !s || s.rolled || !canAct(s) || rollLocked() || paused(s)) return;
   app.popRolling = true;
   $('rollpop-btn').disabled = true;
   const seqBefore = s.rollSeq, d = $('rollpop-die'), started = Date.now();
@@ -60,27 +65,93 @@ function showTaunt(s, t) {
   $('msg-from').textContent = app.mode === 'local'
     ? `${nameOf(s, t.from)} an ${nameOf(s, t.to)}`
     : `Nachricht von ${nameOf(s, t.from)} (${COLORS[t.from]})`;
-  $('msg-text').textContent = t.text;
+  $('msg-text').textContent = t.text || '';
+  $('msg-text').hidden = !t.text;
+  const g = $('msg-gif');
+  if (GIF_URL_OK(t.gif)) { g.src = t.gif; g.hidden = false; } else { g.removeAttribute('src'); g.hidden = true; }
   $('msg').hidden = false;
   $('msg-ok').focus();
 }
 $('msg-ok').addEventListener('click', () => { $('msg').hidden = true; render(); });
+function resetTauntForm() { $('taunt-text').value = ''; pickGif(null); $('gif-q').value = ''; app.gifQuery = null; }
+// Local game: end the pause right here. Online: the host ends it for everyone.
+function finishTauntLocal() { const s = clone(app.state); endTaunt(s); app.state = s; render(); }
 function sendTaunt() {
   const s = app.state, lc = s && s.lastCap;
-  if (!lc) return;
-  const text = $('taunt-text').value.trim();
-  if (!text) { toast('Schreib erst etwas.'); return; }
-  app.tauntDone = lc.id; $('taunt-text').value = ''; render();
-  if (app.mode === 'local') { showTaunt(s, { from: lc.from, to: lc.to, text }); return; }
-  send({ type: 'taunt', text });
+  if (!lc || !paused(s)) return;
+  const text = $('taunt-text').value.trim(), gif = app.gif || null;
+  if (!text && !gif) { toast('Schreib erst etwas oder such ein GIF aus.'); return; }
+  app.tauntDone = lc.id; resetTauntForm();
+  if (app.mode === 'local') { showTaunt(s, { from: lc.from, to: lc.to, text, gif }); finishTauntLocal(); return; }
+  render();
+  send({ type: 'taunt', text, gif });
   toast('Nachricht an ' + nameOf(s, lc.to) + ' geschickt.');
 }
+function skipTaunt() {
+  const s = app.state;
+  if (!s || !s.lastCap) return;
+  app.tauntDone = s.lastCap.id; resetTauntForm();
+  if (app.mode === 'local') { finishTauntLocal(); return; }
+  render();
+  if (paused(s) && s.seats[s.lastCap.from] && s.seats[s.lastCap.from].uid === CID) send({ type: 'tauntSkip' });
+}
+// Called every second by the countdown once the 30 seconds are up.
+window.tauntTimeUp = function () {
+  const s = app.state;
+  if (!paused(s)) return;
+  if (app.tauntDone !== s.lastCap.id) { app.tauntDone = s.lastCap.id; resetTauntForm(); }
+  if (app.mode === 'local') finishTauntLocal();
+  else if (net.isHost && hostTauntOverdue()) { const n = clone(s); endTaunt(n); app.state = n; broadcast(); }
+};
 $('btn-taunt').addEventListener('click', sendTaunt);
 $('taunt-text').addEventListener('keydown', e => { if (e.key === 'Enter') sendTaunt(); });
-$('btn-taunt-skip').addEventListener('click', () => {
-  if (app.state && app.state.lastCap) app.tauntDone = app.state.lastCap.id;
-  $('taunt-text').value = ''; render();
+$('btn-taunt-skip').addEventListener('click', skipTaunt);
+
+// --- GIF search (GIPHY) ---
+function pickGif(url) {
+  app.gif = url || null;
+  $('gif-pick').hidden = !app.gif;
+  if (app.gif) $('gif-pick-img').src = app.gif; else $('gif-pick-img').removeAttribute('src');
+  document.querySelectorAll('#gif-grid button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.url === app.gif)));
+}
+$('gif-pick-x').addEventListener('click', () => pickGif(null));
+let gifTimer = null, gifReq = 0;
+async function loadGifs(q) {
+  if (!GIPHY_KEY) return;
+  const id = ++gifReq, grid = $('gif-grid');
+  const url = `https://api.giphy.com/v1/gifs/${q ? 'search' : 'trending'}?api_key=${encodeURIComponent(GIPHY_KEY)}&limit=18&rating=pg-13&lang=de&bundle=messaging_non_clips` + (q ? '&q=' + encodeURIComponent(q) : '');
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const data = (await res.json()).data || [];
+    if (id !== gifReq) return;
+    grid.innerHTML = '';
+    if (!data.length) { grid.innerHTML = '<p class="muted small" style="grid-column:1/-1;margin:0">Nichts gefunden. Probier ein anderes Wort.</p>'; return; }
+    for (const g of data) {
+      const big = g.images && g.images.fixed_height && g.images.fixed_height.url;
+      const small = (g.images && (g.images.fixed_width_small || g.images.fixed_height_small) || {}).url || big;
+      if (!GIF_URL_OK(big)) continue;
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.url = big;
+      b.setAttribute('aria-pressed', String(big === app.gif)); b.setAttribute('aria-label', g.title || 'GIF');
+      const img = document.createElement('img'); img.src = small; img.alt = ''; img.loading = 'lazy';
+      b.appendChild(img);
+      b.addEventListener('click', () => pickGif(app.gif === big ? null : big));
+      grid.appendChild(b);
+    }
+  } catch {
+    if (id === gifReq) grid.innerHTML = '<p class="muted small" style="grid-column:1/-1;margin:0">GIFs konnten nicht geladen werden.</p>';
+  }
+}
+window.openGifSearch = function () {
+  $('gif-box').hidden = !GIPHY_KEY;
+  if (GIPHY_KEY && app.gifQuery == null) { app.gifQuery = ''; loadGifs(''); }
+};
+$('gif-q').addEventListener('input', e => {
+  clearTimeout(gifTimer);
+  const q = e.target.value.trim();
+  gifTimer = setTimeout(() => { app.gifQuery = q; loadGifs(q); }, 350);
 });
+$('gif-q').addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
 
 // Local game
 for (const n of [2,3,4]) $('cnt-' + n).addEventListener('click', () => { app.localCount = n; renderLocalNames(); });
@@ -145,6 +216,12 @@ function send(action) {
 }
 
 // --- Host ---
+// The host ends the pause 30 s after it saw the knock-out (plus a second, so the capturer's
+// own countdown runs out first).
+function hostTauntOverdue() {
+  const c = app.tauntClock;
+  return !!(c && (performance.now() - c.at) / 1000 >= TAUNT_SECONDS + 1);
+}
 function hostSave() { if (app.code) store.set('aerger-host-' + app.code, JSON.stringify(app.state)); }
 function sendState(cid) { if (net.link && cid !== CID) net.link.sendTo(cid, { type: 'state', state: app.state }); }
 function broadcast() {
@@ -188,7 +265,7 @@ function hostHandle(cid, d) {
       s = freshGame(s.seats, { code: s.code });
       break;
     case 'roll':
-      if (s.phase !== 'play' || s.rolled || seatOf !== s.turn) return;
+      if (s.phase !== 'play' || s.rolled || seatOf !== s.turn || paused(s)) return;
       doRoll(s);
       break;
     case 'move': {
@@ -206,13 +283,19 @@ function hostHandle(cid, d) {
     }
     case 'taunt': {
       const lc = s.lastCap;
-      if (!lc || seatOf !== lc.from) return;
-      const t = { from: lc.from, to: lc.to, text: String(d.text || '').slice(0, 120) };
+      if (!lc || seatOf !== lc.from || !paused(s)) return;
+      const t = { from: lc.from, to: lc.to, text: String(d.text || '').slice(0, 120), gif: GIF_URL_OK(d.gif) ? d.gif : null };
+      if (!t.text && !t.gif) return;
       const victim = s.seats[lc.to] && s.seats[lc.to].uid;
       if (victim === CID) showTaunt(s, t);
       else if (victim && net.link) net.link.sendTo(victim, { type: 'taunt', t });
-      return;
+      endTaunt(s);
+      break;
     }
+    case 'tauntSkip':
+      if (!s.lastCap || seatOf !== s.lastCap.from || !paused(s)) return;
+      endTaunt(s);
+      break;
     default: return;
   }
   app.state = s;

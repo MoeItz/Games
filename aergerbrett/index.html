@@ -129,6 +129,21 @@ details summary { cursor: pointer; font-weight: 700; }
 details ul { padding-left: 18px; margin: 8px 0 0; display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
 
 #taunt-pop { z-index: 26; }
+#taunt-box { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.taunt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.countdown { font-family: var(--f-display); font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--c); }
+.countdown.hurry { color: var(--p0); }
+.timebar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.timebar i { display: block; height: 100%; background: var(--c); transition: width 1s linear; }
+.gif-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 210px; overflow-y: auto; }
+.gif-grid button { padding: 0; border: 2px solid transparent; border-radius: 8px; background: var(--bg); cursor: pointer; aspect-ratio: 1; overflow: hidden; }
+.gif-grid button[aria-pressed=true] { border-color: var(--c); }
+.gif-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gif-pick { position: relative; align-self: flex-start; }
+.gif-pick img { height: 120px; width: auto; max-width: 100%; border-radius: 10px; display: block; }
+.msg-gif { max-width: 100%; max-height: 240px; border-radius: 10px; display: block; align-self: center; }
+.gif-pick button { position: absolute; top: 4px; right: 4px; border: 0; border-radius: 50%; width: 28px; height: 28px; background: rgba(0,0,0,.7); color: #fff; cursor: pointer; font-weight: 700; }
+.giphy-by { font-size: 11px; color: var(--muted); text-align: right; letter-spacing: .04em; }
 .overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(10, 12, 18, .6);
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .msg-card { background: var(--surface); border: 4px solid var(--c); border-radius: 16px; padding: 24px; width: min(460px, 100%); display: flex; flex-direction: column; gap: 14px; animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
@@ -259,10 +274,17 @@ details ul { padding-left: 18px; margin: 8px 0 0; display: flex; flex-direction:
 </div>
 <div class="overlay" id="taunt-pop" role="dialog" aria-modal="true" aria-labelledby="taunt-title" hidden>
   <div class="msg-card" id="taunt-box">
-    <div class="label">Rausgeworfen!</div>
+    <div class="taunt-head"><div class="label">Rausgeworfen!</div><div class="countdown" id="taunt-count" aria-live="off">30</div></div>
+    <div class="timebar" aria-hidden="true"><i id="taunt-bar" style="width:100%"></i></div>
     <p class="msg-text" id="taunt-title">Schreib was Fieses</p>
     <p class="muted small" id="taunt-sub"></p>
     <input type="text" id="taunt-text" maxlength="120" placeholder="z. B. Tschüss, ab nach Hause!">
+    <div class="gif-pick" id="gif-pick" hidden><img id="gif-pick-img" alt="Ausgewähltes GIF"><button id="gif-pick-x" aria-label="GIF entfernen">×</button></div>
+    <div id="gif-box" hidden>
+      <input type="text" id="gif-q" maxlength="50" placeholder="GIF suchen, z. B. tschüss, haha, loser" style="width:100%">
+      <div class="gif-grid" id="gif-grid" style="margin-top:8px"></div>
+      <div class="giphy-by">Powered by GIPHY</div>
+    </div>
     <div class="row"><button class="btn primary" id="btn-taunt">Nachricht schicken</button><button class="btn" id="btn-taunt-skip">Lieber nicht</button></div>
   </div>
 </div>
@@ -270,6 +292,7 @@ details ul { padding-left: 18px; margin: 8px 0 0; display: flex; flex-direction:
   <div class="msg-card">
     <div class="label" id="msg-from"></div>
     <p class="msg-text" id="msg-text"></p>
+    <img class="msg-gif" id="msg-gif" alt="GIF" hidden>
     <button class="btn primary" id="msg-ok">Grrr … okay</button>
   </div>
 </div>
@@ -363,11 +386,16 @@ function doRoll(s) {
   nextTurn(s);
 }
 
+// After a knock-out the game waits until the message is sent, skipped, or 30 seconds are up.
+const TAUNT_SECONDS = 30;
+const paused = s => !!(s && s.phase === 'play' && s.lastCap && s.tauntWait === s.lastCap.id);
+function endTaunt(s) { s.tauntWait = null; }
+
 function doMove(s, m) {
   const p = s.turn, n = nameOf(s, p);
   s.pieces[p][m.i] = m.to;
   let msg = m.from === -1 ? `${n} kommt raus` : m.to >= 40 ? `${n} zieht ins Ziel` : `${n} zieht ${s.dice}`;
-  if (m.cap) { s.pieces[m.cap.q][m.cap.i] = -1; s.lastCap = { from: p, to: m.cap.q, id: s.rollSeq }; msg +=` und wirft ${nameOf(s, m.cap.q)} raus!`; } else msg += '.';
+  if (m.cap) { s.pieces[m.cap.q][m.cap.i] = -1; s.lastCap = { from: p, to: m.cap.q, id: s.rollSeq }; s.tauntWait = s.rollSeq; msg +=` und wirft ${nameOf(s, m.cap.q)} raus!`; } else msg += '.';
   addLog(s, msg);
   s.last = { p, i: m.i };
   if (s.pieces[p].every(x => x >= 40) && !s.finished.includes(p)) {
@@ -585,11 +613,28 @@ function renderLobby() {
     : n < 2 ? 'Mindestens 2 Leute müssen sitzen.' : mine < 0 ? 'Setz dich auf einen Platz, um zu starten.' : `${n} Spieler bereit. Wer sitzt, kann starten.`;
 }
 
+// Countdown for the message after a knock-out. Each device counts from the moment it saw the
+// knock-out (no clock sync needed); the host (or the local game) ends the pause after 30 s.
+let tauntTicker = null;
+function tauntLeft(s) {
+  if (!paused(s)) return 0;
+  if (!app.tauntClock || app.tauntClock.id !== s.lastCap.id) app.tauntClock = { id: s.lastCap.id, at: performance.now() };
+  return Math.max(0, Math.ceil(TAUNT_SECONDS - (performance.now() - app.tauntClock.at) / 1000));
+}
+function tauntTick() {
+  const s = app.state;
+  if (!paused(s)) { clearInterval(tauntTicker); tauntTicker = null; return; }
+  if (tauntLeft(s) <= 0 && window.tauntTimeUp) tauntTimeUp();
+  render();
+}
+
 function renderGame() {
   const s = app.state; if (!s) return;
   showDie(s);
+  if (paused(s)) { tauntLeft(s); if (!tauntTicker) tauntTicker = setInterval(tauntTick, 1000); }
   const mine = canAct(s);
-  const locked = rollLocked();
+  const isPaused = paused(s);
+  const locked = rollLocked() || isPaused;
   const die = $('die');
   die.disabled = !(mine && !s.rolled) || locked;
   die.classList.toggle('ready', mine && !s.rolled && !locked);
@@ -599,6 +644,9 @@ function renderGame() {
   if (s.phase === 'done') {
     label = 'Spiel vorbei';
     status = `${nameOf(s, s.finished[0])} gewinnt!`;
+  } else if (isPaused) {
+    const lc0 = s.lastCap;
+    status = `${nameOf(s, lc0.from)} schreibt ${nameOf(s, lc0.to)} gerade was Fieses … noch ${tauntLeft(s)} s.`;
   } else if (locked && !s.rolled) {
     status = (s.log[s.log.length - 1] || '') + ' Gleich geht’s weiter …';
   } else if (!mine && app.mode === 'online') {
@@ -623,12 +671,16 @@ function renderGame() {
     ul.appendChild(li);
   }
   const lc = s.lastCap;
-  const mayTaunt = !!(lc && lc.id !== app.tauntDone && s.seats[lc.from] &&
+  const mayTaunt = !!(isPaused && lc.id !== app.tauntDone && s.seats[lc.from] && tauntLeft(s) > 0 &&
     (app.mode === 'local' || (app.uid && s.seats[lc.from].uid === app.uid)));
   const tauntWasHidden = $('taunt-pop').hidden;
   $('taunt-pop').hidden = !mayTaunt;
-  if (mayTaunt && tauntWasHidden) setTimeout(() => $('taunt-text').focus(), 0);
+  if (mayTaunt && tauntWasHidden) { setTimeout(() => $('taunt-text').focus(), 0); if (window.openGifSearch) openGifSearch(); }
   if (mayTaunt) {
+    const left = tauntLeft(s);
+    $('taunt-count').textContent = left + ' s';
+    $('taunt-count').classList.toggle('hurry', left <= 5);
+    $('taunt-bar').style.width = (100 * left / TAUNT_SECONDS) + '%';
     $('taunt-box').style.setProperty('--c', CVAR(lc.from));
     $('taunt-sub').textContent = (app.mode === 'local' ? `${nameOf(s, lc.from)} hat` : 'Du hast') +
       ` ${nameOf(s, lc.to)} rausgeworfen. Schreib eine Nachricht, die groß auf ` +

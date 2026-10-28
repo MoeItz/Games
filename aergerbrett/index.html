@@ -476,10 +476,21 @@ function paintDie(n, d = $('die')) {
   for (let k = 0; k < 9; k++) { const sp = document.createElement('span'); if (n && PIPS[n].includes(k)) sp.className = 'on'; d.appendChild(sp); }
 }
 let dieTimer = null;
+// After every roll nobody may roll again until the die has settled and the result was visible.
+const ROLL_LOCK_MS = 1500;
+let lockTimer = null;
+const rollLocked = () => performance.now() < (app.lockUntil || 0);
+function lockRolling() {
+  app.lockUntil = performance.now() + ROLL_LOCK_MS;
+  clearTimeout(lockTimer);
+  lockTimer = setTimeout(render, ROLL_LOCK_MS + 40);
+}
 function showDie(s) {
   const d = $('die');
   d.style.setProperty('--c', CVAR(s.turn));
-  const animate = app.seenRollSeq !== null && s.rollSeq !== app.seenRollSeq && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const changed = app.seenRollSeq !== null && s.rollSeq !== app.seenRollSeq;
+  if (changed) lockRolling();
+  const animate = changed && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   app.seenRollSeq = s.rollSeq;
   if (!animate) { if (!dieTimer) paintDie(s.dice); return; }
   clearInterval(dieTimer); d.classList.remove('rolling'); void d.offsetWidth; d.classList.add('rolling');
@@ -571,15 +582,18 @@ function renderGame() {
   const s = app.state; if (!s) return;
   showDie(s);
   const mine = canAct(s);
+  const locked = rollLocked();
   const die = $('die');
-  die.disabled = !(mine && !s.rolled);
-  die.classList.toggle('ready', mine && !s.rolled);
+  die.disabled = !(mine && !s.rolled) || locked;
+  die.classList.toggle('ready', mine && !s.rolled && !locked);
   const n = nameOf(s, s.turn);
   const isMe = app.mode === 'online' && s.seats[s.turn] && s.seats[s.turn].uid === app.uid;
   let label = 'Am Zug: ' + COLORS[s.turn], status;
   if (s.phase === 'done') {
     label = 'Spiel vorbei';
     status = `${nameOf(s, s.finished[0])} gewinnt!`;
+  } else if (locked && !s.rolled) {
+    status = (s.log[s.log.length - 1] || '') + ' Gleich geht’s weiter …';
   } else if (!mine && app.mode === 'online') {
     status = `${n} ist dran.`;
   } else if (s.rolled) {
@@ -617,7 +631,7 @@ function renderGame() {
   // Roll prompt: pops up whenever it's this device's turn to roll.
   const popKey = s.turn + ':' + s.rollSeq + ':' + s.tries;
   const pop = $('rollpop');
-  const wantPop = s.phase === 'play' && mine && !s.rolled && !mayTaunt && $('msg').hidden && app.rollPopDismissed !== popKey;
+  const wantPop = s.phase === 'play' && mine && !s.rolled && !locked && !mayTaunt && $('msg').hidden && app.rollPopDismissed !== popKey;
   if (app.popRolling) { /* popup is showing its own roll; it closes itself */ }
   else if (wantPop && pop.hidden) {
     pop.style.setProperty('--c', CVAR(s.turn));

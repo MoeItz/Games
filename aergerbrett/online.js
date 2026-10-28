@@ -13,12 +13,12 @@ function act(fn) {
 function doRollAction() { if (app.mode === 'local') act(doRoll); else send({ type: 'roll' }); }
 function doMoveAction(mv) { if (app.mode === 'local') act(st => doMove(st, mv)); else send({ type: 'move', i: mv.i }); }
 
-$('die').addEventListener('click', () => { if (app.state && !app.state.rolled && canAct(app.state)) doRollAction(); });
+$('die').addEventListener('click', () => { if (app.state && !app.state.rolled && canAct(app.state) && !rollLocked()) doRollAction(); });
 
 // Roll inside the popup, let the die tumble until the result is in, show it, then close.
 function popRoll() {
   const s = app.state;
-  if (app.popRolling || !s || s.rolled || !canAct(s)) return;
+  if (app.popRolling || !s || s.rolled || !canAct(s) || rollLocked()) return;
   app.popRolling = true;
   $('rollpop-btn').disabled = true;
   const seqBefore = s.rollSeq, d = $('rollpop-die'), started = Date.now();

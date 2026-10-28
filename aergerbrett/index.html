@@ -476,20 +476,27 @@ function paintDie(n, d = $('die')) {
   for (let k = 0; k < 9; k++) { const sp = document.createElement('span'); if (n && PIPS[n].includes(k)) sp.className = 'on'; d.appendChild(sp); }
 }
 let dieTimer = null;
-// After every roll nobody may roll again until the die has settled and the result was visible.
-const ROLL_LOCK_MS = 1500;
+// Nobody may roll right away: after a roll the die has to settle and the result stays visible
+// (the roller's popup closes after ~1.5 s, then a short look at the board); after a move the
+// board stays visible for a moment, so everyone sees where the peg went.
+const ROLL_LOCK_MS = 2300, MOVE_LOCK_MS = 1100;
 let lockTimer = null;
 const rollLocked = () => performance.now() < (app.lockUntil || 0);
-function lockRolling() {
-  app.lockUntil = performance.now() + ROLL_LOCK_MS;
+function lockRolling(ms) {
+  const until = performance.now() + ms;
+  if (until <= (app.lockUntil || 0)) return;
+  app.lockUntil = until;
   clearTimeout(lockTimer);
-  lockTimer = setTimeout(render, ROLL_LOCK_MS + 40);
+  lockTimer = setTimeout(render, ms + 40);
 }
 function showDie(s) {
   const d = $('die');
   d.style.setProperty('--c', CVAR(s.turn));
   const changed = app.seenRollSeq !== null && s.rollSeq !== app.seenRollSeq;
-  if (changed) lockRolling();
+  const boardKey = JSON.stringify(s.pieces) + ':' + s.turn;
+  if (changed) lockRolling(ROLL_LOCK_MS);
+  else if (app.seenBoardKey && boardKey !== app.seenBoardKey) lockRolling(MOVE_LOCK_MS);
+  app.seenBoardKey = boardKey;
   const animate = changed && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   app.seenRollSeq = s.rollSeq;
   if (!animate) { if (!dieTimer) paintDie(s.dice); return; }
